@@ -29,3 +29,7 @@ _ReSharper*/
 $tf*/
 /SampleFiles
 /packages/SimpleJson.0.25.0
+.vs/AutoResxTranslator/v15/Server/sqlite3/db.lock
+.vs/AutoResxTranslator/v15/Server/sqlite3/storage.ide
+.vs/AutoResxTranslator/v15/Server/sqlite3/storage.ide-shm
+.vs/AutoResxTranslator/v15/Server/sqlite3/storage.ide-wal

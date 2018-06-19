@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Web;
@@ -20,7 +21,7 @@ namespace AutoResxTranslator
 		private const string RequestGoogleTranslatorUrl = "https://translate.googleapis.com/translate_a/single?client=gtx&sl={0}&tl={1}&hl=en&dt=t&dt=bd&dj=1&source=icon&tk=467103.467103&q={2}";
 
 
-		public delegate void TranslateCallBack(bool succeed, string result);
+		public delegate void TranslateCallBack(bool succeed, string result, string type);
 		public static void TranslateAsync(
 			string text,
 			string sourceLng,
@@ -39,7 +40,8 @@ namespace AutoResxTranslator
 			string sourceLng,
 			string destLng,
 			string textTranslatorUrlKey,
-			out string result)
+            out string result,
+            out string type)
 		{
 			var request = CreateWebRequest(text, sourceLng, destLng, textTranslatorUrlKey);
 			try
@@ -49,20 +51,23 @@ namespace AutoResxTranslator
 				if (response.StatusCode != HttpStatusCode.OK)
 				{
 					result = "Response is failed with code: " + response.StatusCode;
+                    type = string.Empty;
 					return false;
 				}
 
 				using (var stream = response.GetResponseStream())
 				{
-					string output;
-					var succeed = ReadGoogleTranslatedResult(stream, out output);
-					result = output;
+					string _output, _type;
+					var succeed = ReadGoogleTranslatedResult(stream, out _output, out _type);
+					result = _output;
+                    type = _type;
 					return succeed;
 				}
 			}
 			catch (Exception ex)
 			{
 				result = ex.Message;
+                type = string.Empty;
 				return false;
 			}
 		}
@@ -95,21 +100,21 @@ namespace AutoResxTranslator
 				response = (HttpWebResponse)request.EndGetResponse(ar);
 				if (response.StatusCode != HttpStatusCode.OK)
 				{
-					callback(false, "Response is failed with code: " + response.StatusCode);
+					callback(false, "Response is failed with code: " + response.StatusCode, string.Empty);
 					return;
 				}
 
 				using (var stream = response.GetResponseStream())
 				{
-					string output;
-					var succeed = ReadGoogleTranslatedResult(stream, out output);
+					string output, type;
+					var succeed = ReadGoogleTranslatedResult(stream, out output, out type);
 
-					callback(succeed, output);
+					callback(succeed, output, type);
 				}
 			}
 			catch (Exception ex)
 			{
-				callback(false, "Request failed.\r\n" + ex.Message);
+				callback(false, "Request failed.\r\n" + ex.Message, string.Empty);
 			}
 			finally
 			{
@@ -123,7 +128,7 @@ namespace AutoResxTranslator
 		/// <summary>
 		///  the main trick :)
 		/// </summary>
-		static bool ReadGoogleTranslatedResult(Stream rawdata, out string result)
+		static bool ReadGoogleTranslatedResult(Stream rawdata, out string result, out string type)
 		{
 			string text;
 			using (var reader = new StreamReader(rawdata, Encoding.UTF8))
@@ -145,12 +150,24 @@ namespace AutoResxTranslator
 					final += (obj[0][i][0]).ToString();
 				}
 				result = final;
-				return true;
+                
+                type = string.Empty;
+                if (obj.Count > 1)
+                {
+                    type = (obj[1][0][0]).ToString();
+                    try
+                    {
+                        result = result + "; " + string.Join("; ", ((JsonArray)(obj[1][0][1])).Select(x => x.ToString()).ToArray());
+                    }
+                    catch { }
+                }
+                return true;
 			}
 			catch (Exception ex)
 			{
 				result = ex.Message;
-				return false;
+                type = string.Empty;
+                return false;
 			}
 		}
 
